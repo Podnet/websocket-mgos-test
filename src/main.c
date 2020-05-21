@@ -19,13 +19,33 @@ static void sum_cb(struct mg_rpc_request_info *ri, void *cb_arg,
     (void)fi;
 }
 
-static void my_timer_cb(void *arg)
+static void send_data_to_server_cb(void *arg)
 {
-    LOG(LL_INFO, ("Inside timer function."));
+    LOG(LL_INFO, ("Sending data to server"));
+    // struct mg_rpc_call_opts opts = {.dst = mg_mk_str("ws://192.168.0.104:5000")};
+    // mg_rpc_callf(mgos_rpc_get_global(), mg_mk_str("ping"), NULL, NULL, &opts,
+    //              NULL);
+
+    // Looking for our websocket connection
+    struct mg_mgr *mgr;
+    struct mg_connection *c;
+    mgr = mgos_get_mgr();
+    for (c = mg_next(mgr, NULL); c != NULL; c = mg_next(mgr, c))
+    {
+        LOG(LL_INFO, ("Found a connection in mgr object"));
+    }
+    (void)arg;
+}
+
+static void connect_to_ws_cb(int ev, void *ev_data, void *userdata)
+{
+    LOG(LL_INFO, ("We are connected to the internet."));
     struct mg_rpc_call_opts opts = {.dst = mg_mk_str("ws://192.168.0.104:5000")};
     mg_rpc_callf(mgos_rpc_get_global(), mg_mk_str("ping"), NULL, NULL, &opts,
                  NULL);
-    (void)arg;
+    (void)ev;
+    (void)ev_data;
+    (void)userdata;
 }
 
 enum mgos_app_init_result mgos_app_init(void)
@@ -33,8 +53,11 @@ enum mgos_app_init_result mgos_app_init(void)
     // Register JSON RPC Callback
     mg_rpc_add_handler(mgos_rpc_get_global(), "Sum", "{a: %lf, b: %lf}", sum_cb, NULL);
 
+    // To check when we are connected to the internet
+    mgos_event_add_handler(MGOS_WIFI_EV_STA_IP_ACQUIRED, connect_to_ws_cb, NULL);
+
     // Register callback for a timer to send information to the server
-    mgos_set_timer(5000, MGOS_TIMER_REPEAT, my_timer_cb, NULL);
+    mgos_set_timer(7000, MGOS_TIMER_REPEAT, send_data_to_server_cb, NULL);
 
     return MGOS_APP_INIT_SUCCESS;
 }
