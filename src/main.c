@@ -19,14 +19,14 @@ static void sum_cb(struct mg_rpc_request_info *ri, void *cb_arg,
     (void)fi;
 }
 
-// static void my_timer_cb(void *arg)
-// {
-//     LOG(LL_INFO, ("Inside timer function."));
-//     struct mg_rpc_call_opts opts = {.dst = mg_mk_str("ws://192.168.0.104")};
-//     mg_rpc_callf(mgos_rpc_get_global(), mg_mk_str("ping"), NULL, NULL, &opts,
-//                  NULL, NULL, NULL);
-//     (void)arg;
-// }
+static void my_timer_cb(void *arg)
+{
+    LOG(LL_INFO, ("Inside timer function."));
+    struct mg_rpc_call_opts opts = {.dst = mg_mk_str("ws://192.168.0.104:5000")};
+    mg_rpc_callf(mgos_rpc_get_global(), mg_mk_str("ping"), NULL, NULL, &opts,
+                 NULL);
+    (void)arg;
+}
 
 enum mgos_app_init_result mgos_app_init(void)
 {
@@ -34,7 +34,7 @@ enum mgos_app_init_result mgos_app_init(void)
     mg_rpc_add_handler(mgos_rpc_get_global(), "Sum", "{a: %lf, b: %lf}", sum_cb, NULL);
 
     // Register callback for a timer to send information to the server
-    // mgos_set_timer(5000, MGOS_TIMER_REPEAT, my_timer_cb, NULL);
+    mgos_set_timer(5000, MGOS_TIMER_REPEAT, my_timer_cb, NULL);
 
     return MGOS_APP_INIT_SUCCESS;
 }
