@@ -1,6 +1,7 @@
 #include "mgos.h"
 #include "mgos_wifi.h"
 #include "mgos_rpc.h"
+#include "mg_rpc_channel_tcp_common.h"
 
 static void sum_cb(struct mg_rpc_request_info *ri, void *cb_arg,
                    struct mg_rpc_frame_info *fi, struct mg_str args)
@@ -21,7 +22,7 @@ static void sum_cb(struct mg_rpc_request_info *ri, void *cb_arg,
 
 static void send_data_to_server_cb(void *arg)
 {
-    LOG(LL_INFO, ("Sending data to server"));
+    LOG(LL_INFO, ("Preparing to send data to server"));
     // struct mg_rpc_call_opts opts = {.dst = mg_mk_str("ws://192.168.0.104:5000")};
     // mg_rpc_callf(mgos_rpc_get_global(), mg_mk_str("ping"), NULL, NULL, &opts,
     //              NULL);
@@ -30,9 +31,23 @@ static void send_data_to_server_cb(void *arg)
     struct mg_mgr *mgr;
     struct mg_connection *c;
     mgr = mgos_get_mgr();
+
     for (c = mg_next(mgr, NULL); c != NULL; c = mg_next(mgr, c))
     {
-        LOG(LL_INFO, ("Found a connection in mgr object"));
+        if (c->flags & MG_F_IS_WEBSOCKET)
+        {
+            char *buf = mg_rpc_channel_tcp_get_info(c);
+            LOG(LL_INFO, ("Found a ws connection with destination: %s", buf));
+            break;
+        }
+    }
+    if (c != NULL)
+    {
+        LOG(LL_INFO, ("Sending data to server"));
+        // create json string to send via websocket
+        char data[] = "{\"jsonrpc\":\"2.0\", \"method\":\"test\"}";
+        mg_send_websocket_frame(c, WEBSOCKET_OP_TEXT, data, sizeof(data)-1);
+        LOG(LL_INFO, ("Data sent to server"));
     }
     (void)arg;
 }
@@ -57,7 +72,7 @@ enum mgos_app_init_result mgos_app_init(void)
     mgos_event_add_handler(MGOS_WIFI_EV_STA_IP_ACQUIRED, connect_to_ws_cb, NULL);
 
     // Register callback for a timer to send information to the server
-    mgos_set_timer(7000, MGOS_TIMER_REPEAT, send_data_to_server_cb, NULL);
+    mgos_set_timer(1000, MGOS_TIMER_REPEAT, send_data_to_server_cb, NULL);
 
     return MGOS_APP_INIT_SUCCESS;
 }
